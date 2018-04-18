@@ -12,6 +12,7 @@ module Network.Ethereum.Web3.Types.Types
        , _value
        , _gas
        , _gasPrice
+       , RawTransactionOptions(..)
        , ETH
        , _nonce
        , forkWeb3
@@ -281,6 +282,25 @@ _gasPrice = lens (\(TransactionOptions txOpt) -> unNullOrUndefined $ txOpt.gasPr
 _nonce :: forall u. Lens' (TransactionOptions u) (Maybe BigNumber)
 _nonce = lens (\(TransactionOptions txOpt) -> unNullOrUndefined $ txOpt.nonce)
            (\(TransactionOptions txOpts) n -> TransactionOptions $ txOpts {nonce = NullOrUndefined n})
+
+--------------------------------------------------------------------------------
+-- * RawTransactionOptions
+--------------------------------------------------------------------------------
+
+newtype RawTransactionOptions u =
+  RawTransactionOptions { to :: Maybe Address
+                        , value :: Maybe (Value u)
+                        , gas :: BigNumber
+                        , gasPrice :: BigNumber
+                        , data :: HexString
+                        , nonce :: BigNumber
+                        }
+
+derive instance genericRawTransactionOptions :: Generic (RawTransactionOptions u) _
+derive instance eqRawTransactionOptions :: Eq (RawTransactionOptions u)
+
+instance showRawTransactionOptions :: Show (RawTransactionOptions u) where
+  show = genericShow
 
 --------------------------------------------------------------------------------
 -- * Node Synchronisation

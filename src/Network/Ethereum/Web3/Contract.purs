@@ -14,20 +14,23 @@ import Prelude
 
 import Control.Coroutine (runProcess)
 import Control.Monad.Eff.Exception (error)
-import Control.Monad.Reader (ReaderT)
+import Control.Monad.Reader (ReaderT(..))
 import Data.Either (Either(..))
 import Data.Functor.Tagged (Tagged, untagged)
 import Data.Generic.Rep (class Generic)
 import Data.Lens ((.~), (^.), (%~), (?~))
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Monoid (mempty)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Network.Ethereum.Types (Address, HexString)
-import Network.Ethereum.Core.Keccak256 (toSelector)
-import Network.Ethereum.Web3.Api (eth_blockNumber, eth_call, eth_newFilter, eth_sendTransaction)
+import Network.Ethereum.Core.HexString (fromByteString, toBigNumber)
+import Network.Ethereum.Core.RLP (RLPObject(..), rlpEncode)
+import Network.Ethereum.Core.Keccak256 (keccak256, toSelector)
+import Network.Ethereum.Core.Signatures (ChainId(..), PrivateKey, Signature(..), signMessage, addChainIdOffset)
+import Network.Ethereum.Web3.Api (eth_blockNumber, eth_call, eth_newFilter, eth_sendRawTransaction, eth_sendTransaction)
 import Network.Ethereum.Web3.Contract.Internal (reduceEventStream, pollFilter, logsStream, mkBlockNumber)
 import Network.Ethereum.Web3.Solidity (class DecodeEvent, class GenericABIDecode, class GenericABIEncode, genericABIEncode, genericFromData)
-import Network.Ethereum.Web3.Types (class EtherUnit, CallError(..), ChainCursor(..), Change, EventAction, Filter, NoPay, TransactionOptions, Value, Web3, _data, _fromBlock, _toBlock, _value, convert, throwWeb3)
+import Network.Ethereum.Web3.Types (class EtherUnit, CallError(..), ChainCursor(..), Change, EventAction, Filter, NoPay, RawTransactionOptions(..), TransactionOptions, Value, Web3, Wei, _data, _fromBlock, _toBlock, _value, convert, throwWeb3, toWei)
 import Type.Proxy (Proxy)
 
 --------------------------------------------------------------------------------
@@ -92,6 +95,18 @@ class TxMethod (selector :: Symbol) a where
            -> Web3 e HexString
            -- ^ 'Web3' wrapped tx hash
 
+-- | Class paramaterized by values which are ABIEncodable, allowing the templating of
+-- | of a transaction with this value as the payload to be signed locally
+class SignedTxMethod (selector :: Symbol) a where
+    -- | Send a transaction for given contract 'Address', value and input data
+    sendSignedTx :: forall e u.
+                    EtherUnit (Value u)
+                 => IsSymbol selector
+                 => RawTransactionOptions u
+                 -> Tagged (SProxy selector) a
+                 -- ^ Method data
+                 -> ReaderT SigningEnv (Web3 e) HexString
+
 class CallMethod (selector :: Symbol) a b where
     -- | Constant call given contract 'Address' in mode and given input data
     call :: forall e.
@@ -107,6 +122,9 @@ class CallMethod (selector :: Symbol) a b where
 
 instance txmethodAbiEncode :: (Generic a rep, GenericABIEncode rep) => TxMethod s a where
   sendTx = _sendTransaction
+
+instance signedtxmethodAbiEncode :: (Generic a rep, GenericABIEncode rep) => SignedTxMethod s a where
+  sendSignedTx = _sendSignedTransaction
 
 instance callmethodAbiEncode :: (Generic a arep, GenericABIEncode arep, Generic b brep, GenericABIDecode brep) => CallMethod s a b where
   call = _call
@@ -125,6 +143,26 @@ _sendTransaction txOptions dat = do
   where
     txdata d = txOptions # _data .~ Just d
                          # _value %~ map convert
+
+_sendSignedTransaction
+  :: forall a u rep e selector .
+     IsSymbol selector
+  => Generic a rep
+  => GenericABIEncode rep
+  => EtherUnit (Value u)
+  => RawTransactionOptions u
+  -> Tagged (SProxy selector) a
+  -> ReaderT SigningEnv (Web3 e) HexString
+_sendSignedTransaction txOptions dat = ReaderT $ \signingEnv ->
+    let sel = toSelector <<< reflectSymbol $ (SProxy :: SProxy selector)
+        txOptions' = fillInTxOpts $ sel <> (genericABIEncode <<< untagged $ dat)
+    in eth_sendRawTransaction $ signAndSerializeTransaction signingEnv txOptions'
+  where
+    fillInTxOpts d =
+      let (RawTransactionOptions txOpts) = txOptions
+      in RawTransactionOptions txOpts { value = convert <$> txOpts.value
+                                      , data = d
+                                      }
 
 _call :: forall a arep b brep e selector .
          IsSymbol selector
@@ -163,3 +201,53 @@ deployContract txOptions deployByteCode args =
   let txdata = txOptions # _data ?~ deployByteCode <> genericABIEncode (untagged args)
                          # _value %~ map convert
   in eth_sendTransaction txdata
+
+
+--------------------------------------------------------------------------------
+-- * SigningHelpers
+--------------------------------------------------------------------------------
+
+type SigningEnv =
+  { privateKey :: PrivateKey
+  , chainId :: ChainId
+  }
+
+signTransaction
+  :: forall u.
+     EtherUnit (Value u)
+  => SigningEnv
+  -> RawTransactionOptions u
+  -> Signature
+signTransaction {privateKey, chainId} (RawTransactionOptions txOpts) =
+  let (ChainId cId) = chainId
+      txMessage = keccak256 <<< rlpEncode $
+        RLPArray [ RLPBigNumber txOpts.nonce
+                 , RLPBigNumber txOpts.gasPrice
+                 , RLPBigNumber txOpts.gas
+                 , maybe RLPNull RLPAddress txOpts.to
+                 , maybe RLPNull RLPBigNumber (toWei <$> txOpts.value)
+                 , RLPHexString txOpts.data
+                 , RLPInt cId
+                 , RLPInt 0
+                 , RLPInt 0
+                 ]
+      signature = signMessage privateKey txMessage
+  in addChainIdOffset chainId signature
+
+signAndSerializeTransaction
+  :: SigningEnv
+  -> RawTransactionOptions Wei
+  -> HexString
+signAndSerializeTransaction signingEnv tx@(RawTransactionOptions txOpts) =
+  let (Signature sig) = signTransaction signingEnv tx
+  in fromByteString <<< rlpEncode $
+        RLPArray [ RLPBigNumber txOpts.nonce
+                 , RLPBigNumber txOpts.gasPrice
+                 , RLPBigNumber txOpts.gas
+                 , maybe RLPNull RLPAddress txOpts.to
+                 , maybe RLPNull RLPBigNumber (toWei <$> txOpts.value)
+                 , RLPHexString txOpts.data
+                 , RLPInt sig.v
+                 , RLPBigNumber (toBigNumber sig.r)
+                 , RLPBigNumber (toBigNumber sig.s)
+                 ]
