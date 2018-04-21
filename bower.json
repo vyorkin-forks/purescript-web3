@@ -35,7 +35,8 @@
     "purescript-type-equality": "^2.1.0",
     "purescript-modules": "^3.0.0",
     "purescript-mmorph": "^3.0.0",
-    "purescript-simple-json": "^2.0.1"
+    "purescript-simple-json": "^2.0.1",
+    "purescript-websocket-simple": "^2.0.0"
   },
   "devDependencies": {
     "purescript-debug": "v3.0.0",
