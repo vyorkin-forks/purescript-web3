@@ -33,8 +33,8 @@ module Network.Ethereum.Web3.Types.Types
        , unFalseOrObject
        , SyncStatus(..)
        , MethodName
-       , Request
-       , mkRequest
+       , RPCMessage
+       , mkRPCMessage
        , Response(..)
        , Web3Error(..)
        , RpcError(..)
@@ -517,34 +517,68 @@ instance decodeFalseOrObj :: Decode a => Decode (FalseOrObject a) where
     decode x = readFalseOrObject decode x
 
 --------------------------------------------------------------------------------
--- | Web3 RPC
+-- * Web3 RPC
 --------------------------------------------------------------------------------
 
 type MethodName = String
 
-newtype Request =
-  Request { jsonrpc :: String
-          , id :: Int
-          , method :: MethodName
-          , params :: Array Foreign
-          }
+newtype RPCMessage a =
+  RPCMessage { jsonrpc :: String
+             , id :: Int
+             , method :: MethodName
+             , params :: a
+             }
 
-derive instance genericRequest :: Generic Request _
+derive instance genericRPCMessage :: Generic (RPCMessage a) _
 
-instance encodeRequest :: Encode Request where
+instance encodeRPCMessage :: Encode a => Encode (RPCMessage a) where
   encode x = genericEncode (defaultOptions { unwrapSingleConstructors = true }) x
 
-mkRequest :: MethodName -> Int -> Array Foreign -> Request
-mkRequest name reqId ps = Request { jsonrpc : "2.0"
-                                  , id : reqId
-                                  , method : name
-                                  , params : ps
-                                  }
+instance decodeRPCMessage :: Decode a => Decode (RPCMessage a) where
+  decode x = genericDecode (defaultOptions { unwrapSingleConstructors = true }) x
+
+mkRPCMessage :: MethodName -> Int -> Array Foreign -> RPCMessage (Array Foreign)
+mkRPCMessage name reqId ps =
+  RPCMessage { jsonrpc : "2.0"
+             , id : reqId
+             , method : name
+             , params : ps
+             }
 
 newtype Response a = Response (Either Web3Error a)
 
 instance decodeResponse' :: Decode a => Decode (Response a) where
   decode a = Response <$> ((Left <$> decode a) <|> (Right <$> (readProp "result" a >>= decode)))
+
+--------------------------------------------------------------------------------
+-- * Subscriptions
+--------------------------------------------------------------------------------
+
+newtype SubscriptionId = SubscriptionId HexString
+
+derive instance genericSubscriptionId :: Generic SubscriptionId _
+
+derive newtype instance showSubscriptionId :: Show SubscriptionId
+derive newtype instance eqSubscriptionId :: Eq SubscriptionId
+derive newtype instance decodeSubscriptionId :: Decode SubscriptionId
+
+newtype Subscription a =
+  Subscription { subscription :: SubscriptionId
+               , result :: a
+               }
+
+derive instance genericSubscription :: Generic (Subscription a) _
+
+derive instance functorSubscription :: Functor Subscription
+
+instance showSubscription :: Show a => Show (Subscription a) where
+  show = genericShow
+
+instance eqSubscription :: Eq a => Eq (Subscription a) where
+  eq = genericEq
+
+instance decodeSubscription :: Decode a => Decode (Subscription a) where
+  decode x = genericDecode (defaultOptions { unwrapSingleConstructors = true }) x
 
 --------------------------------------------------------------------------------
 -- * Errors

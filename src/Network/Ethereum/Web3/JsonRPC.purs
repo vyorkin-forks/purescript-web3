@@ -13,7 +13,7 @@ import Data.Either (Either(..))
 import Data.Foreign (Foreign)
 import Data.Foreign.Class (class Decode, class Encode, decode, encode)
 import Data.Monoid (mempty)
-import Network.Ethereum.Web3.Types (ETH, MethodName, Request, Response(..), Web3, Web3Error(..), mkRequest)
+import Network.Ethereum.Web3.Types (ETH, MethodName, RPCMessage, Response(..), Web3, Web3Error(..), mkRPCMessage)
 import Network.Ethereum.Web3.Types.Provider (Provider)
 
 
@@ -41,8 +41,8 @@ instance remoteBase :: (Decode a) => Remote eff (Web3 eff a) where
 instance remoteInductive :: (Encode a, Remote eff b) => Remote eff (a -> b) where
   remote_ f x = remote_ $ \p args -> f p (encode x : args)
 
-foreign import _sendAsync :: forall eff. Provider -> Request -> EffFnAff (eth :: ETH |eff) Foreign
+foreign import _sendAsync :: forall eff. Provider -> RPCMessage (Array Foreign) -> EffFnAff (eth :: ETH |eff) Foreign
 
 -- | Execute the Web3 query constructed inductively by the builder
 remote :: forall a eff. Remote eff a => MethodName -> a
-remote n = remote_ $ \provider ps -> fromEffFnAff $ _sendAsync provider $ mkRequest n 1 ps
+remote n = remote_ $ \provider ps -> fromEffFnAff $ _sendAsync provider $ mkRPCMessage n 1 ps
