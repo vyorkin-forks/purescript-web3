@@ -9,8 +9,8 @@ module Network.Ethereum.Web3.Contract.Internal
 
 import Prelude
 
-import Control.Monad.Aff (delay)
-import Control.Monad.Aff.Class (liftAff)
+import Effect.Aff (delay)
+import Effect.Aff.Class (liftAff)
 import Control.Monad.Reader.Trans (ReaderT, runReaderT)
 import Control.Monad.Rec.Class (class MonadRec)
 import Control.Monad.Trans.Class (lift)
@@ -20,7 +20,7 @@ import Data.Either (Either(..))
 import Data.Functor.Tagged (Tagged, tagged)
 import Data.Lens ((.~), (^.))
 import Data.Newtype (wrap, unwrap)
-import Data.Record as Record
+import Record as Record
 import Data.Symbol (class IsSymbol, SProxy(..))
 import Data.Time.Duration (Milliseconds(..))
 import Data.Traversable (for)

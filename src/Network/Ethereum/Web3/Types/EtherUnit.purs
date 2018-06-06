@@ -20,10 +20,9 @@ module Network.Ethereum.Web3.Types.EtherUnit
 
 import Prelude
 
-import Data.Foreign.Class (class Decode, class Encode, encode)
+import Foreign.Class (class Decode, class Encode, encode)
 import Data.Maybe (fromJust)
 import Data.Module (class LeftModule, (^*))
-import Data.Monoid (class Monoid)
 import Network.Ethereum.Core.BigNumber (BigNumber, decimal, floorBigNumber, parseBigNumber, divide)
 import Partial.Unsafe (unsafePartial)
 import Type.Proxy (Proxy(..))

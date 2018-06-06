@@ -13,15 +13,14 @@ module Network.Ethereum.Web3.Contract
 import Prelude
 
 import Control.Coroutine (runProcess)
-import Control.Monad.Eff.Exception (error)
-import Control.Monad.Fork.Class (bracket)
+import Effect.Exception (error)
+import Effect.Aff (bracket)
 import Control.Monad.Reader (ReaderT)
 import Data.Either (Either(..))
 import Data.Functor.Tagged (Tagged, untagged)
 import Data.Generic.Rep (class Generic)
 import Data.Lens ((.~), (^.), (%~), (?~))
 import Data.Maybe (Maybe(..))
-import Data.Monoid (mempty)
 import Data.Symbol (class IsSymbol, SProxy(..), reflectSymbol)
 import Network.Ethereum.Core.Keccak256 (toSelector)
 import Network.Ethereum.Types (Address, HexString)

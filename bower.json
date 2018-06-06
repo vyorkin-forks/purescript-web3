@@ -16,6 +16,7 @@
     "!src/**/*"
   ],
   "dependencies": {
+    "purescript-argonaut": "kejace/purescript-argonaut#compiler/0.12",
     "purescript-errors": "kejace/purescript-errors#compiler/0.12",
     "purescript-profunctor-lenses": "^4.0.0",
     "purescript-foreign": "^5.0.0",

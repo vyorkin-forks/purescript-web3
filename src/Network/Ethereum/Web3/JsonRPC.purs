@@ -2,18 +2,17 @@ module Network.Ethereum.Web3.JsonRPC where
 
 import Prelude
 
-import Control.Monad.Aff (Aff, Error, attempt, error)
-import Control.Monad.Aff.Class (liftAff)
-import Control.Monad.Aff.Compat (fromEffFnAff, EffFnAff)
+import Effect.Aff (Aff, Error, attempt, error)
+import Effect.Aff.Class (liftAff)
+import Effect.Aff.Compat (fromEffFnAff, EffFnAff)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Reader (ask)
 import Data.Array ((:))
 import Data.Either (Either(..))
-import Data.Foreign (Foreign)
-import Data.Foreign.Class (class Decode, class Encode, decode, encode)
-import Data.Foreign.Generic (defaultOptions, genericEncodeJSON)
-import Data.Monoid (mempty)
+import Foreign (Foreign)
+import Foreign.Class (class Decode, class Encode, decode, encode)
+import Foreign.Generic (defaultOptions, genericEncodeJSON)
 import Network.Ethereum.Web3.Types (ETH, MethodName, Request, Response(..), Web3, Web3Error(..), mkRequest)
 import Network.Ethereum.Web3.Types.Provider (Provider)
 

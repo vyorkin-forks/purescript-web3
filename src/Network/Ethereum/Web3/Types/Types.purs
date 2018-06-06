@@ -47,11 +47,11 @@ import Prelude
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, class Plus, (<|>))
 import Control.Error.Util (hush)
-import Control.Monad.Aff (Aff, Fiber, ParAff, attempt, forkAff, liftEff', message, throwError)
-import Control.Monad.Aff.Class (class MonadAff, liftAff)
-import Control.Monad.Eff (kind Effect)
-import Control.Monad.Eff.Class (class MonadEff)
-import Control.Monad.Eff.Exception (Error, throwException)
+import Effect.Aff (Aff, Fiber, ParAff, attempt, forkAff, liftEff', message, throwError)
+import Effect.Aff.Class (class MonadAff, liftAff)
+import Effect (kind Effect)
+import Effect.Class (class MonadEffect)
+import Effect.Exception (Error, throwException)
 import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError)
 import Control.Monad.Except (runExcept)
 import Control.Monad.Fork.Class (class MonadBracket, class MonadFork, class MonadKill, bracket, fork, join, kill, suspend, uninterruptible, never) as MFork
@@ -60,10 +60,10 @@ import Control.Monad.Rec.Class (class MonadRec)
 import Control.Parallel.Class (class Parallel, parallel, sequential)
 import Data.Argonaut as A
 import Data.Either (Either(..))
-import Data.Foreign (F, Foreign, ForeignError(..), fail, isNull, readBoolean, readString)
-import Data.Foreign.Class (class Decode, class Encode, decode, encode)
-import Data.Foreign.Generic (defaultOptions, genericDecode, genericDecodeJSON, genericEncode)
-import Data.Foreign.Index (readProp)
+import Foreign (F, Foreign, ForeignError(..), fail, isNull, readBoolean, readString)
+import Foreign.Class (class Decode, class Encode, decode, encode)
+import Foreign.Generic (defaultOptions, genericDecode, genericDecodeJSON, genericEncode)
+import Foreign.Index (readProp)
 import Data.Generic.Rep (class Generic)
 import Data.Generic.Rep.Eq (genericEq)
 import Data.Generic.Rep.Show (genericShow)
@@ -75,7 +75,7 @@ import Network.Ethereum.Types (Address, BigNumber, HexString)
 import Network.Ethereum.Web3.Types.EtherUnit (class EtherUnit, NoPay, Value, Wei, convert)
 import Network.Ethereum.Web3.Types.Provider (Provider)
 import Simple.JSON (class ReadForeign, class WriteForeign)
-import Type.Row.Effect.Equality (class EffectRowEquals, effFrom, effTo) as ERE
+--import Type.Row.Effect.Equality (class EffectRowEquals, effFrom, effTo) as ERE
 
 --------------------------------------------------------------------------------
 -- * Block
